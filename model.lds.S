@@ -21,11 +21,11 @@ SECTIONS
 
  . = PHYS_OFFSET;
 
- .text : { boot.o }
+ .text : { boot.o; . = ALIGN(0x1000); } = 0
 
  . = PHYS_OFFSET + 0x8000;
  monitor_start = .;
- .monitor : { monitor.o }
+ .monitor : { monitor.o; . = ALIGN(0x1000); } = 0
 
  .data : { *(.data) }
  .bss : { *(.bss) }

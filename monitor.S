@@ -11,7 +11,11 @@
 	.syntax	unified
     	.arch_extension sec	
     	.arch_extension virt
+
 	.text
+
+_start:
+	.set	stack, _start + 0x8000
 
 	.word 0
 	.word 0
@@ -58,7 +62,13 @@ set_hvbar:
 	@ Secure Monitor Call
 	@
 1:
-    	ldr	sp, =_monitor_stack
+	@ Set a stack different for every processor
+	adrl	sp, stack
+	mrc	p15, 0, r0, c0, c0, 5		@ MPIDR (ARMv7 only)
+	bfi	r0, r0, 10, 2
+	and	r0, r0, 0xf00
+	sub	sp, sp, r0
+
 	push	{r11, r12}
 
 	@
@@ -117,7 +127,3 @@ output6:
 
 	.ltorg
 
-	/* A bit of stack space for monitor mode */
-	.align	12
-_monitor_stack:
-	.long 0
