@@ -194,6 +194,12 @@ efi_cmd:
 	.align	2
 1:
 
+	@ ATAG_INITRD2
+	.long	4
+	.long	0x54420005
+	.long	0x10d00000
+	.long	0x01800000
+
 	@ ATAG_NONE
 	.long	0
 	.long	0x00000000
