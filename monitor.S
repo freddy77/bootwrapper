@@ -66,8 +66,8 @@ set_hvbar:
 	@
 	mrc	p15, 0, r12, c1, c1, 0		@ Secure configuration register
 	bic	r12, r12, #0x07f
-	ldr	r11, =0x131
-	orr	r12, r12, r11
+	orr	r12, r12, #0x130
+	orr	r12, r12, #0x1
 	mcr	p15, 0, r12, c1, c1, 0
    
     	@
