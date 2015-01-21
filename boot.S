@@ -133,21 +133,24 @@ loop:
 	.global	d_hex8
 d_hex8:
 	@ hex number should be stored in r1
-	push	{r0, r1, r2, r6, r7, lr}
-	mov	r6, #8
-	mov	r7, #0
+	@ r0 address to write string
+	push	{r1-r3, lr}
+	mov	r2, #0
 5:
 	mov	r3, r1, lsr #28
-	subs	r2, r3, #0xa
+	cmp	r3, #0xa
 	addmi	r3, r3, #0x30
 	addpl	r3, r3, #0x57
-	subs	r6, r6, #1
-	strb	r3, [r0, r7]
-	add	r7, r7, #1
+	strb	r3, [r0, r2]
+	add	r2, r2, #1
+	cmp	r2, #8
 	mov	r1, r1, lsl #4
 	bne	5b
-	bl	d_print
-	pop	{r0, r1, r2, r6, r7, pc}
+	mov	r3, #0
+	strb	r3, [r0, r2]
+	pop	{r1-r3, lr}
+	b	d_print
+	.ltorg
 
   .globl d_print
 d_print:
