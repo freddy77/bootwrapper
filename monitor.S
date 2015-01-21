@@ -71,7 +71,7 @@ set_hvbar:
 	mcr	p15, 0, r12, c1, c1, 0
    
     	@
-	@ Read/Write HVBAR
+	@ Write HVBAR
 	@
 	ldr	r11, =vect_hyp
 	mcr	p15, 4, r11, c12, c0, 0
