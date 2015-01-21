@@ -172,6 +172,7 @@ mouse:
         bne   	cat
         POP     {r0-r3}
         mov     pc, lr
+	.ltorg
 	
 	@
 	@ Data
