@@ -11,7 +11,7 @@
 	.syntax	unified
     	.arch_extension sec	
     	.arch_extension virt
-	.section monitor, "x"
+	.text
 
 	.word 0
 	.word 0
