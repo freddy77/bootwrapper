@@ -27,7 +27,7 @@ _start:
 	@
 	mrc	p15, 0, r0, c0, c1, 1		@ CPUID_EXT_PFR1
 	lsr	r0, r0, #16
-	and	r0, r0, #1			@ Check generic timer support
+	ands	r0, r0, #1			@ Check generic timer support
 	beq	1f
 	ldr	r0, =50000000			@ 50MHz timer frequency
 	mcr	p15, 0, r0, c14, c0, 0		@ CNTFRQ
