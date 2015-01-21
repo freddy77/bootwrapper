@@ -217,7 +217,7 @@ output3:
 .align 11
 kernel_entry:
     /* Gets written by the parent EFI blob */
-    .long 0
+    .long 0x10008000
 .align 12
 stack:
     .long 0
