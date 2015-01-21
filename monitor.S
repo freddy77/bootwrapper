@@ -78,7 +78,7 @@ set_hvbar:
 	pop	{r11, r12}
 	movs	pc, lr
 
-	.globl d_print
+	.globl d_print_2
 d_print_2:
 	push    {r0-r3}
 	mov     r3, #0xe4000000
