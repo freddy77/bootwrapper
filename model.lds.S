@@ -18,6 +18,9 @@ PHYS_OFFSET = 0xe0100000 - 0x10000; /* upper end of SRAM */
 
 SECTIONS
 {
+
+ /DISCARD/ : { *(.ARM.attributes .note .comment) }
+
  . = PHYS_OFFSET;
 
  .text : { boot.o }

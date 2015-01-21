@@ -1,3 +1,3 @@
 #!/bin/sh
-${CROSS_COMPILE}objcopy -O binary -R .note -R .comment -R .ARM.attributes -S -j .text linux-system.axf .text
-${CROSS_COMPILE}objcopy -O binary -R .note -R .comment -R .ARM.attributes -S -j .monitor linux-system.axf .monitor
+${CROSS_COMPILE}objcopy -O binary -S -j .text linux-system.axf .text
+${CROSS_COMPILE}objcopy -O binary -S -j .monitor linux-system.axf .monitor
