@@ -125,5 +125,6 @@ output5:
 output6:
 	.asciz "6\n"
 
+	.align 2
 	.ltorg
 

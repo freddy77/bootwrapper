@@ -21,12 +21,48 @@
 _start:
 	.set	monitor_start_rel, _start + 0x8000
 	.set	stack, _start + 0x8000
+#define FINAL_START (0xe0100000 - 0x10000)
 
 #if 0
 	adrl	r0, kernel_entry
 	ldr	r0, [r0]
 	bx	r0				@ jump to the kernel
 #endif
+	@ Test if we are already in the right area
+	lsl	r0, pc, 24
+	cmp	r0, #(FINAL_START >> 24)
+	beq	1f
+
+	@ Test if we already copy the area
+	adr	r3, copied
+	ldrb	r0, [r3]
+	cmp	r0, 0
+	bne	2f
+
+	@ Copy text and monitor to final destination
+	mov	r2, 1
+	strb	r2, [r3]			@ Mark as copied (copy only once)
+	adr	r1, _start
+	mov32	r2, #FINAL_START
+	mov	r3, #0x10000
+copy_loop:
+	ldr	r0, [r1], #4
+	str	r0, [r2], #4
+	subs	r3, r3,	#4
+	bne	copy_loop
+
+	@ Jump to code at new location
+2:
+.Ldiff = 1f - _start
+	mov32	r0, #.Ldiff + FINAL_START
+	isb
+	bx	r0
+
+copied:
+	.byte	0
+
+	.align	2
+1:
 
 	adrl	sp, stack
 
