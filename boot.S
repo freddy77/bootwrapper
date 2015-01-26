@@ -174,6 +174,7 @@ loop:
 	bx	lr				@ jump to the kernel
 
 
+#ifdef DEBUG
 	.global	d_hex8
 d_hex8:
 	@ hex number should be stored in r1
@@ -219,6 +220,7 @@ mouse:
         bne   	cat
         POP     {r0-r3}
         mov     pc, lr
+#endif
 	.ltorg
 	
 	@
@@ -251,6 +253,7 @@ efi_cmd:
 	.long	0
 	.long	0x00000000
 
+#ifdef DEBUG
 output0:
     .long  0
     .long  0
@@ -268,6 +271,8 @@ output2:
 	.asciz "two\n"
 output3:
 	.asciz "three\n"
+#endif
+
 .align 11
 kernel_entry:
 	/* Gets written by the parent EFI blob */
