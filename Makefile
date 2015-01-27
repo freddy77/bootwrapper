@@ -21,12 +21,20 @@ CPPFLAGS	+= -march=armv7-a
 # These are needed by the underlying kernel make
 export CROSS_COMPILE ARCH
 
-all: $(IMAGE)
+all: $(IMAGE) test_psci
+
+test_psci: test_psci.c psci.c
+	$(CC) $(CPPFLAGS) -static -DTEST -o $@ $^
+# You need qemu-user-static package installed to do this
+	qemu-arm-static ./test_psci
 
 clean:
-	rm -f $(IMAGE) boot.o model.lds monitor.o $(SEMIIMG)
+	rm -f $(IMAGE) boot.o model.lds monitor.o psci.o test_psci $(SEMIIMG)
 
-$(IMAGE): boot.o monitor.o model.lds Makefile
+psci.o: psci.c Makefile
+	$(CC) $(CPPFLAGS) -O2 -Wall -marm -fPIC -c -o $@ $<
+
+$(IMAGE) .monitor: boot.o monitor.o psci.o model.lds Makefile
 	$(LD) -o $@ --script=model.lds
 	./objcopy-sh
 

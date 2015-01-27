@@ -16,6 +16,7 @@
 
 _start:
 	.set	stack, _start + 0x8000
+	.set	text_start, _start - 0x8000
 
 	.word 0
 	.word 0
@@ -69,6 +70,11 @@ set_hvbar:
 	and	r0, r0, 0xf00
 	sub	sp, sp, r0
 
+	@ Write new monitor
+	adr	r0, monitor_final
+	mcr	p15, 0, r0, c12, c0, 1		@ Monitor vector base address
+	isb
+
 	push	{r11, r12}
 
 	@
@@ -87,6 +93,32 @@ set_hvbar:
 	mcr	p15, 4, r11, c12, c0, 0
 	pop	{r11, r12}
 	movs	pc, lr
+
+	.align 5
+monitor_final:
+	.word 0
+	.word 0
+	b	monitor_psci
+	.word 0
+	.word 0
+	.word 0
+	.word 0
+	.word 0
+
+monitor_psci:
+	@ Push lr to restore
+	@ Push ip as C routines corrupt but we must save it (SMC ABI)
+	@ Do not save extra arguments (r4-r6) as we don't need them currently
+	push	{ip,lr}
+	bl	psci
+	pop	{ip,lr}
+	eret
+
+	.global get_text_start
+get_text_start:
+	adrl	r0, text_start
+	bx	lr
+	.ltorg
 
 #ifdef DEBUG
 	@ Print r0 character to serial, destroy r0
