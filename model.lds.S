@@ -11,8 +11,6 @@ OUTPUT_FORMAT("elf32-littlearm")
 OUTPUT_ARCH(arm)
 TARGET(binary)
 
-INPUT(./boot.o)
-
 PHYS_OFFSET = 0xe0100000 - 0x10000; /* upper end of SRAM */
 
 
