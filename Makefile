@@ -29,7 +29,8 @@ test_psci: test_psci.c psci.c
 	qemu-arm-static ./test_psci
 
 clean:
-	rm -f $(IMAGE) boot.o model.lds monitor.o psci.o test_psci $(SEMIIMG)
+	rm -f $(IMAGE) boot.o model.lds monitor.o psci.o test_psci $(SEMIIMG) \
+	.monitor .text
 
 psci.o: psci.c Makefile
 	$(CC) $(CPPFLAGS) -O2 -Wall -marm -fPIC -c -o $@ $<
