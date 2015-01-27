@@ -83,7 +83,7 @@ set_hvbar:
     	@
 	@ Write HVBAR
 	@
-	ldr	r11, =vect_hyp
+	adr	r11, vect_hyp
 	mcr	p15, 4, r11, c12, c0, 0
 	pop	{r11, r12}
 	movs	pc, lr

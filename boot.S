@@ -14,13 +14,16 @@
 
 	.globl	_start
 _start:
+	.set	monitor_start_rel, _start + 0x8000
+	.set	stack, _start + 0x8000
+
 #if 0
-	ldr	r0, =kernel_entry
+	adrl	r0, kernel_entry
 	ldr	r0, [r0]
 	bx	r0				@ jump to the kernel
 #endif
 
-	ldr	sp, =stack
+	adrl	sp, stack
 
 	@
 	@ Program architected timer frequency
@@ -78,7 +81,7 @@ _start:
 	mcr	p15, 0, r0, c1, c1, 2
     
 	@ Change to NS-mode
-	ldr	r0, =monitor_start
+	adrl	r0, monitor_start_rel
 	mcr	p15, 0, r0, c12, c0, 1		@ Monitor vector base address
 	isb
 	
@@ -110,8 +113,8 @@ run_kernel:
 	@
 	@ Get Kernel cmdline from UEFI
 	@
-	ldr	r0, =efi_cmd
 	ldr	r1, =0xf1200060	@ cmdline addr at norflash
+	adrl	r0, efi_cmd
 	mov	r2, #0x100
 loop:
 	ldr	r3, [r1], #4
@@ -122,11 +125,11 @@ loop:
 	@
 	@ Kernel parameters
 	@
-	ldr	r0, =kernel_entry
+	adrl	r0, kernel_entry
 	ldr	lr, [r0]
 	mov	r0, #0
 	@ldr	r1, =2272			@ P650 ID (not clear)
-	ldr	r2, =atags
+	adr	r2, atags
 	bx	lr				@ jump to the kernel
 
 
@@ -226,8 +229,8 @@ output3:
 	.asciz "three\n"
 .align 11
 kernel_entry:
-    /* Gets written by the parent EFI blob */
-    .long 0x10008000
-.align 12
-stack:
-    .long 0
+	/* Gets written by the parent EFI blob */
+	.long 0x10008000
+
+	.align 12,0
+_end:
