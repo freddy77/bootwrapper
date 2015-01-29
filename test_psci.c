@@ -11,6 +11,11 @@ static int expect(int line, int exp, int v)
 	exit(1);
 }
 
+void serial_out(char c)
+{
+	putc(c, stdout);
+}
+
 #define expect1(v,a1)       expect(__LINE__, v, psci(a1,0,0,0))
 #define expect2(v,a1,a2)    expect(__LINE__, v, psci(a1,a2,0,0))
 #define expect3(v,a1,a2,a3) expect(__LINE__, v, psci(a1,a2,a3,0))

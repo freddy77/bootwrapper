@@ -204,6 +204,8 @@ static int hip04_cpu_up(int cpu, unsigned long entry)
 }
 
 #ifdef DEBUG
+void serial_out(char c);
+
 void xprintf(const char *fmt, ...)
 {
 	const char *s = fmt;
