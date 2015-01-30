@@ -20,7 +20,7 @@ _start:
 
 	.word 0
 	.word 0
-	b	1f
+	b	monitor_init
 	.word 0
 	.word 0
 	.word 0
@@ -62,7 +62,7 @@ set_hvbar:
 	@
 	@ Secure Monitor Call
 	@
-1:
+monitor_init:
 	@ Set a stack different for every processor
 	adrl	sp, stack
 	mrc	p15, 0, r0, c0, c0, 5		@ MPIDR (ARMv7 only)
