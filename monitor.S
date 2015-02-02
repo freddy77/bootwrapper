@@ -103,6 +103,15 @@ monitor_init:
 	adr	r0, vect_hyp
 	mcr	p15, 4, r0, c12, c0, 0
 
+	@ Clear HSCTLR
+	ldr	r0, =#0x30c50878
+	mcr	p15, 4, r0, c1, c0, 0		@ HSCTLR
+
+	@ Invalidate the old TLBs
+	isb
+	mcr	p15, 4, r0, c8, c7, 0	@ TLBIALLH
+	dsb	ish
+
 	@ Load context and entry for this cpu
 	@ on exit r0 == context, r1 == entry
 	bl	hip04_cpu_starting
