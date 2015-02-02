@@ -16,7 +16,7 @@ LD_SCRIPT	= model.lds.S
 
 CC		= $(CROSS_COMPILE)gcc
 LD		= $(CROSS_COMPILE)ld
-CPPFLAGS	+= -march=armv7-a
+CPPFLAGS	+= -march=armv7-a -DDEBUG
 
 # These are needed by the underlying kernel make
 export CROSS_COMPILE ARCH

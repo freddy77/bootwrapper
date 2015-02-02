@@ -14,6 +14,19 @@
 
 	.text
 
+.macro print, str
+#ifdef DEBUG
+	adr	r0, str_\@
+	adr	lr, end_print_\@
+	b	d_print_2
+str_\@:
+	.asciz "\str"
+	.align 2
+end_print_\@:
+#endif
+.endm
+
+
 _start:
 	.set	stack, _start + 0x8000
 	.set	text_start, _start - 0x8000
@@ -97,6 +110,10 @@ monitor_init:
 	orr	r12, r12, #0x1
 	mcr	p15, 0, r12, c1, c1, 0
    
+#ifdef DEBUG
+	bl	dump_regs
+#endif
+
     	@
 	@ Write HVBAR
 	@
@@ -167,18 +184,150 @@ d_print_2:
 	bl	xprintf
 	pop    {r0-r3,ip,pc}
 
-output1:
-	.asciz "1\n"
-output2:
-	.asciz "2\n"
-output3:
-	.asciz "3\n"
-output4:
-	.asciz "4\n"
-output5:
-	.asciz "5\n"
-output6:
-	.asciz "6\n"
+dump_reg:
+	adr	r0, dump_reg_str
+	b	d_print_2
+
+dump_reg_str:
+	.asciz	"%s %x\n"
+	.align 2
+
+dump_regs:
+
+.macro dump_reg a, b, c, d, name
+	mrc	p15, \b, r2, c\a, c\c, \d
+	adr	r1, str_\@
+	adr	lr, end_print_\@
+	b	dump_reg
+str_\@:
+	.asciz "\name"
+	.align 2
+end_print_\@:
+.endm
+
+	push	{lr}
+
+	dump_reg	0, 0,0,0, MIDR
+	dump_reg	0, 0,0,1, CTR
+	dump_reg	0, 0,0,2, TCMTR
+	dump_reg	0, 0,0,3, TLBTR
+	dump_reg	0, 0,0,4, MIDR
+	dump_reg	0, 0,0,5, MPIDR
+	dump_reg	0, 0,0,6, REVIDR
+	dump_reg	0, 0,1,0, ID_PFR0
+	dump_reg	0, 0,1,1, ID_PFR1
+	dump_reg	0, 0,1,2, ID_DFR0
+	dump_reg	0, 0,1,3, ID_AFR0
+	dump_reg	0, 0,1,4, ID_MMFR0
+	dump_reg	0, 0,1,5, ID_MMFR1
+	dump_reg	0, 0,1,6, ID_MMFR2
+	dump_reg	0, 0,1,7, ID_MMFR3
+	dump_reg	0, 0,2,0, ID_ISAR0
+	dump_reg	0, 0,2,1, ID_ISAR1
+	dump_reg	0, 0,2,2, ID_ISAR2
+	dump_reg	0, 0,2,3, ID_ISAR3
+	dump_reg	0, 0,2,4, ID_ISAR4
+	dump_reg	0, 0,2,5, ID_ISAR5
+	dump_reg	0, 1,0,0, CCSIDR
+	dump_reg	0, 1,0,1, CLIDR
+	dump_reg	0, 1,0,7, AIDR
+	dump_reg	0, 2,0,0, CSSELR
+	dump_reg	0, 4,0,0, VPIDR
+	dump_reg	0, 4,0,5, VMPIDR
+
+	dump_reg	1, 0,0,0, SCTLR
+	dump_reg	1, 0,0,1, ACTLR
+	dump_reg	1, 0,0,2, CPACR
+	dump_reg	1, 0,1,0, SCR
+	dump_reg	1, 0,1,1, SDER
+	dump_reg	1, 0,1,2, NSACR
+	dump_reg	1, 4,0,0, HSCTLR
+	dump_reg	1, 4,0,1, HACTLR
+	dump_reg	1, 4,1,0, HCR
+	dump_reg	1, 4,1,1, HDCR
+	dump_reg	1, 4,1,2, HCPTR
+	dump_reg	1, 4,1,3, HSTR
+	dump_reg	1, 4,1,7, HACR
+
+	dump_reg	2, 0,0,0, TTBR0
+	dump_reg	2, 0,0,1, TTBR1
+	dump_reg	2, 0,0,2, TTBCR
+	dump_reg	2, 4,0,2, HTCR
+	dump_reg	2, 4,1,2, VTCR
+
+	dump_reg	3, 0,0,0, DACR
+
+	dump_reg	5, 0,0,0, DFSR
+	dump_reg	5, 0,0,1, IFSR
+	dump_reg	5, 0,1,0, ADFSR
+	dump_reg	5, 0,1,1, AIFSR
+	dump_reg	5, 4,1,0, HADFSR
+	dump_reg	5, 4,1,1, HAIFSR
+	dump_reg	5, 4,2,0, HSR
+
+	dump_reg	6, 0,0,0, DFAR
+	dump_reg	6, 0,0,2, IFAR
+	dump_reg	6, 4,0,0, HDFAR
+	dump_reg	6, 4,0,2, HIFAR
+	dump_reg	6, 4,0,4, HPFAR
+
+#if 0
+	dump_reg	7, 0,0,4, NOP
+	dump_reg	7, 0,1,0, ICIALLUIS
+	dump_reg	7, 0,1,6, BPIALLIS
+	dump_reg	7, 0,4,0, PAR
+	dump_reg	7, 0,5,0, ICIALLU
+	dump_reg	7, 0,5,1, ICIMVAU
+	dump_reg	7, 0,5,4, CP15ISB
+	dump_reg	7, 0,5,6, BPIALL
+	dump_reg	7, 0,5,7, BPIMVA
+	dump_reg	7, 0,6,1, DCIMVAC
+	dump_reg	7, 0,6,2, DCISW
+	dump_reg	7, 0,8,0, ATS1CPR
+	dump_reg	7, 0,8,1, ATS1CPW
+	dump_reg	7, 0,8,2, ATS1CUR
+	dump_reg	7, 0,8,3, ATS1CUW
+	dump_reg	7, 0,8,4, ATS12NSOPR
+	dump_reg	7, 0,8,5, ATS12NSOPW
+	dump_reg	7, 0,8,6, ATS12NSOUR
+	dump_reg	7, 0,8,7, ATS12NSOUW
+	dump_reg	7, 0,10,1, DCCMVAC
+	dump_reg	7, 0,10,2, DCCSW
+	dump_reg	7, 0,10,4, CP15DSB
+	dump_reg	7, 0,10,5, CP15DMB
+	dump_reg	7, 0,11,1, DCCMVAU
+	dump_reg	7, 0,13,1, NOP
+	dump_reg	7, 0,14,1, DCCIMVAC
+	dump_reg	7, 0,14,2, DCCISW
+	dump_reg	7, 4,8,0, ATS1HR
+	dump_reg	7, 4,8,1, ATS1HW
+#endif
+
+	dump_reg	9, 1,0,2, L2CTLR
+	dump_reg	9, 1,0,3, L2ECTLR
+
+	dump_reg	10, 0,2,0, MAIR0
+	dump_reg	10, 0,2,1, MAIR1
+	dump_reg	10, 0,3,0, AMAIR0
+	dump_reg	10, 0,3,1, AMAIR1
+	dump_reg	10, 4,2,0, HMAIR0
+	dump_reg	10, 4,2,1, HMAIR1
+	dump_reg	10, 4,3,0, HAMAIR0
+	dump_reg	10, 4,3,1, HAMAIR1
+
+	dump_reg	12, 0,0,0, VBAR
+	dump_reg	12, 0,0,1, MVBAR
+	dump_reg	12, 0,1,0, ISR
+	dump_reg	12, 4,0,0, HVBAR
+
+	dump_reg	13, 0,0,0, FCSEIDR
+	dump_reg	13, 0,0,1, CONTEXTIDR
+	dump_reg	13, 0,0,2, TPIDRURW
+	dump_reg	13, 0,0,3, TPIDRURO
+	dump_reg	13, 0,0,4, TPIDRPRW
+	dump_reg	13, 4,0,2, HTPIDR
+
+	pop	{pc}
 #endif
 
 	.align 2

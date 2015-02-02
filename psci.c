@@ -302,7 +302,7 @@ void serial_out(char c);
 
 void xprintf(const char *fmt, ...)
 {
-	const char *s = fmt;
+	const char *s = fmt, *p;
 	va_list ap;
 	unsigned n, i;
 
@@ -318,6 +318,10 @@ void xprintf(const char *fmt, ...)
 					serial_out(c + (c < 10 ? '0' : 'a' - 10));
 					n <<= 4;
 				}
+				break;
+			case 's':
+				for (p = va_arg(ap, const char*); *p; ++p)
+					serial_out(*p);
 				break;
 			default:
 				goto error;
