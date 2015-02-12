@@ -1,0 +1,6 @@
+*.o
+.monitor
+.text
+linux-system.axf
+test_psci
+model.lds

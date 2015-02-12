@@ -1,10 +1,14 @@
+#undef NDEBUG
 #include <stdio.h>
 #include <stdlib.h>
+#include <assert.h>
 
 #include "psci.h"
 
 static int expect(int line, int exp, int v)
 {
+	boot_lock();
+	boot_unlock();
 	if (v == exp)
 		return;
 	fprintf(stderr, "Unexpected return in line %d, got %d(%x) expected %d(%x)\n", line, v, v, exp, exp);
@@ -14,6 +18,20 @@ static int expect(int line, int exp, int v)
 void serial_out(char c)
 {
 	putc(c, stdout);
+}
+
+static int lock;
+
+void boot_lock(void)
+{
+	assert(lock == 0);
+	++lock;
+}
+
+void boot_unlock(void)
+{
+	assert(lock == 1);
+	--lock;
 }
 
 #define expect1(v,a1)       expect(__LINE__, v, psci(a1,0,0,0))
