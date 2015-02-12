@@ -18,14 +18,14 @@ _start:
 	.set	stack, _start + 0x8000
 	.set	text_start, _start - 0x8000
 
-	.word 0
-	.word 0
+	b	.
+	b	.
 	b	monitor_init
-	.word 0
-	.word 0
-	.word 0
-	.word 0
-	.word 0
+	b	.
+	b	.
+	b	.
+	b	.
+	b	.
 
 	.align 5
 #if 0
@@ -99,14 +99,14 @@ monitor_init:
 
 	.align 5
 monitor_final:
-	.word 0
-	.word 0
+	b	.
+	b	.
 	b	monitor_psci
-	.word 0
-	.word 0
-	.word 0
-	.word 0
-	.word 0
+	b	.
+	b	.
+	b	.
+	b	.
+	b	.
 
 monitor_psci:
 	@ Push lr to restore
