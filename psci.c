@@ -74,7 +74,8 @@ static void hip04_set_snoop_filter(unsigned int cluster, unsigned int on)
     writel_relaxed(data, fabric + FAB_SF_MODE);
     while ( 1 )
     {
-        if ( data == readl_relaxed(fabric + FAB_SF_MODE) )
+        data = readl_relaxed(fabric + FAB_SF_MODE);
+        if ( ((data >> cluster) & 1) == on )
             break;
     }
     debug();
