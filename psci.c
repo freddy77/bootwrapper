@@ -67,10 +67,15 @@ static void writel_relaxed(unsigned long d, volatile void *p)
 #define writel_relaxed(d, p) do { (*((volatile unsigned long*)(p))) = (d); } while(0)
 #endif
 
+#ifdef DEBUG
+void xprintf(const char *fmt, ...);
+#else
+#define xprintf(...) do {} while(0)
+#endif
+
 #if defined(TEST) || !defined(DEBUG)
 #define debug() do {} while(0)
 #else
-void xprintf(const char *fmt, ...);
 #define debug() xprintf("line %x\n", __LINE__)
 #endif
 
