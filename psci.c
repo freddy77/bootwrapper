@@ -269,10 +269,6 @@ static int hip04_cpu_off(void)
 	hip04_cpu_table[cluster][cpu] = HIP04_STATE_OFF;
 	last_man = hip04_cluster_is_down(cluster);
 
-	/* prevent other to start again while shutting down */
-	hip04_cpu_table[cluster][cpu] = HIP04_STATE_PENDING;
-	boot_unlock();
-
 	if (last_man) {
 		/* Since it's Cortex A15, disable L2 prefetching. */
 		asm volatile(
@@ -286,8 +282,6 @@ static int hip04_cpu_off(void)
 		v7_flush_dcache_louis();
 	}
 
-	boot_lock();
-	hip04_cpu_table[cluster][cpu] = HIP04_STATE_OFF;
 	boot_unlock();
 
 	for (;;)
