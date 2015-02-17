@@ -188,6 +188,17 @@ finished:
 	ret	lr
 ENDPROC(v7_flush_dcache_all)
 
+ENTRY(v7_flush_tlb)
+	dsb	nshst
+	mov	r0, #0
+	mcr	p15, 0, r0, c8, c7, 0
+	mcr	p15, 0, r0, c8, c6, 0
+	mcr	p15, 0, r0, c8, c5, 0
+	dsb	nsh
+	isb
+	ret	lr
+ENDPROC(v7_flush_tlb)
+
 #if 0
 /*
  *	v7_flush_cache_all()

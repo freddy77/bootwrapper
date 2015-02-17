@@ -33,6 +33,7 @@
 
 void v7_flush_dcache_louis(void);
 void v7_flush_dcache_all(void);
+void v7_flush_tlb(void);
 
 enum {
 	HIP04_STATE_OFF = 0,
@@ -269,6 +270,8 @@ static int hip04_cpu_off(void)
 	hip04_cpu_table[cluster][cpu] = HIP04_STATE_OFF;
 	last_man = hip04_cluster_is_down(cluster);
 
+	boot_unlock();
+
 	if (last_man) {
 		/* Since it's Cortex A15, disable L2 prefetching. */
 		asm volatile(
@@ -277,12 +280,11 @@ static int hip04_cpu_off(void)
 		"dsb	"
 		: : "r" (0x400) );
 		v7_flush_dcache_all();
+		v7_flush_tlb();
 //		hip04_set_snoop_filter(cluster, 0);
 	} else {
 		v7_flush_dcache_louis();
 	}
-
-	boot_unlock();
 
 	for (;;)
 		wfi();
