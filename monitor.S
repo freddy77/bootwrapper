@@ -50,13 +50,16 @@ vect_hyp:
 	b   set_hvbar
 #endif
 set_hvbar:
-#if 0
-    	ldr     r0, =output5
-    	bl  d_print_2
-#endif
+	mrs	r0, spsr
+	and	r0, r0, 0x1f
+	cmp	r0, 0x13
+	bne	1f
+	mrs	sp, SP_svc
+	mrs	lr, LR_svc
 	mrs	r12, cpsr
 	orr	r12, r12, #0x1c0	@ Set A, I and F.
 	msr	spsr_cxsf, r12
+1:
 	eret
 
 	@
