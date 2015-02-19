@@ -41,6 +41,14 @@ unsigned get_mpidr(void)
 	return fake_mpidr;
 }
 
+void v7_flush_dcache_louis(void)
+{
+}
+
+void v7_flush_dcache_all(void)
+{
+}
+
 #define expect1(v,a1)          expect(__LINE__, v, psci(a1,0,0,0))
 #define expect2(v,a1,a2)       expect(__LINE__, v, psci(a1,a2,0,0))
 #define expect3(v,a1,a2,a3)    expect(__LINE__, v, psci(a1,a2,a3,0))

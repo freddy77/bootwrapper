@@ -15,6 +15,7 @@
 #define CLUSTER_L2_RESET_STATUS      (1 << 8)
 #define CLUSTER_DEBUG_RESET_STATUS   (1 << 13)
 
+#define SC_CPU_RESET_REQ(x)          (0x520 + (x << 3))    /* reset */
 #define SC_CPU_RESET_DREQ(x)         (0x524 + (x << 3))    /* unreset */
 #define SC_CPU_RESET_STATUS(x)       (0x1520 + (x << 3))
 
@@ -29,6 +30,9 @@
 #define GICD_SGI_TARGET_LIST_SHIFT   (24)
 
 #define GIC_SGI_EVENT_CHECK 0
+
+void v7_flush_dcache_louis(void);
+void v7_flush_dcache_all(void);
 
 enum {
 	HIP04_STATE_OFF = 0,
@@ -50,6 +54,7 @@ static struct hip04_start hip04_starts[HIP04_MAX_CLUSTERS][HIP04_MAX_CPUS_PER_CL
 #define sysctrl ((volatile unsigned char*)0xe3e00000)
 #define relocation ((volatile unsigned char*)0xe0000100)
 #define gic_dbase ((volatile unsigned char*)0xe0c01000)
+#define gic_cbase ((volatile unsigned char*)0xe0c02000)
 #define gpio3 ((volatile unsigned char*)0xe4002000)
 
 #ifdef TEST
@@ -109,6 +114,11 @@ static inline unsigned get_mpidr(void)
 }
 #endif
 
+static inline void wfi(void)
+{
+	__asm__ __volatile__ ("wfi");
+}
+
 static void hip04_cpu_table_init(void)
 {
     static char initialized = 0;
@@ -129,7 +139,7 @@ static void hip04_cpu_table_init(void)
     hip04_cpu_table[cluster][cpu] = HIP04_STATE_ON;
 }
 
-static bool hip04_cluster_down(unsigned int cluster)
+static bool hip04_cluster_is_down(unsigned int cluster)
 {
     int i;
 
@@ -143,7 +153,7 @@ static void hip04_cluster_up(unsigned int cluster)
 {
     unsigned long data, mask;
 
-    if ( !hip04_cluster_down(cluster) )
+    if ( !hip04_cluster_is_down(cluster) )
         return;
 
     data = CLUSTER_L2_RESET_BIT | CLUSTER_DEBUG_RESET_BIT;
@@ -178,7 +188,7 @@ unsigned get_text_start(void) __attribute__ ((const));
 static int hip04_cpu_up(int cpu, unsigned long entry, unsigned long context)
 {
     unsigned int cluster;
-    unsigned long data;
+    unsigned long data, mask;
 
 #ifdef TEST
     printf("hip04_cpu_up %x\n", cpu);
@@ -216,16 +226,76 @@ static int hip04_cpu_up(int cpu, unsigned long entry, unsigned long context)
     hip04_cpu_table[cluster][cpu] = HIP04_STATE_PENDING;
     hip04_starts[cluster][cpu] = (struct hip04_start) { entry, context };
 
+    boot_unlock();
+
+    /* assure we can reset the cpu */
+    data = readl_relaxed(sysctrl + SC_CPU_RESET_STATUS(cluster));
+    xprintf("CPU status %x %x %x\n", cluster, cpu, data);
+    mask = CORE_RESET_BIT(cpu) | NEON_RESET_BIT(cpu);
+    if ((data & mask) != mask) {
+        data = CORE_RESET_BIT(cpu) | NEON_RESET_BIT(cpu) | \
+               CORE_DEBUG_RESET_BIT(cpu);
+        writel_relaxed(data, sysctrl + SC_CPU_RESET_REQ(cluster));
+#ifndef TEST
+        do {
+            data = readl_relaxed(sysctrl + SC_CPU_RESET_STATUS(cluster));
+        } while ((data & mask) != mask);
+#endif
+        xprintf("CPU status %x %x %x\n", cluster, cpu, data);
+    }
+
+    /* reset it */
     data = CORE_RESET_BIT(cpu) | NEON_RESET_BIT(cpu) | \
            CORE_DEBUG_RESET_BIT(cpu);
     writel_relaxed(data, sysctrl + SC_CPU_RESET_DREQ(cluster));
-
-    boot_unlock();
 
     cpu_up_send_sgi(cpu);
     debug();
     return PSCI_RET_SUCCESS;
 }
+
+static int hip04_cpu_off(void)
+{
+	unsigned cpu, cluster;
+	bool last_man = false;
+
+	cpu = get_mpidr();
+	cluster = (cpu >> 8) & 3;
+	cpu &= 3;
+
+	boot_lock();
+
+	/* are any other CPU on on this cluster ? */
+	hip04_cpu_table[cluster][cpu] = HIP04_STATE_OFF;
+	last_man = hip04_cluster_is_down(cluster);
+
+	/* prevent other to start again while shutting down */
+	hip04_cpu_table[cluster][cpu] = HIP04_STATE_PENDING;
+	boot_unlock();
+
+	if (last_man) {
+		/* Since it's Cortex A15, disable L2 prefetching. */
+		asm volatile(
+		"mcr	p15, 1, %0, c15, c0, 3 \n\t"
+		"isb	\n\t"
+		"dsb	"
+		: : "r" (0x400) );
+		v7_flush_dcache_all();
+		hip04_set_snoop_filter(cluster, 0);
+	} else {
+		v7_flush_dcache_louis();
+	}
+
+	boot_lock();
+	hip04_cpu_table[cluster][cpu] = HIP04_STATE_OFF;
+	boot_unlock();
+
+	for (;;)
+		wfi();
+
+	return PSCI_RET_SUCCESS;
+}
+
 
 #ifdef DEBUG
 void serial_out(char c);
@@ -268,7 +338,7 @@ static int hip04_system_reset(void)
 	writel_relaxed(readl_relaxed(gpio3) & ~0x4000000, gpio3);
 #ifndef TEST
 	for (;;)
-		__asm__ __volatile__ ("wfi");
+		wfi();
 #endif
 	return PSCI_RET_DENIED;
 }
@@ -296,7 +366,7 @@ static int hip04_affinity_info(unsigned long affinity, unsigned long affinity_le
 
 	boot_lock();
 	if (affinity_level == 1) {
-		RETURN((hip04_cluster_down(cluster) ?
+		RETURN((hip04_cluster_is_down(cluster) ?
 			PSCI_STATE_OFF : PSCI_STATE_ON));
 	}
 	cpu = affinity_level & 0xff;
@@ -344,7 +414,7 @@ int psci(unsigned func, unsigned a1, unsigned a2, unsigned a3)
 	case PSCI_VERSION:
 		return 2;
 	case PSCI_CPU_OFF:
-		return PSCI_RET_DENIED;
+		return hip04_cpu_off();
 	case PSCI_CPU_ON:
 		return hip04_cpu_up(a1, a2, a3);
 	case PSCI_AFFINITY_INFO:

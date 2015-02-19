@@ -29,13 +29,13 @@ test_psci: test_psci.c psci.c
 	qemu-arm-static ./test_psci
 
 clean:
-	rm -f $(IMAGE) boot.o model.lds monitor.o bootlock.o psci.o test_psci $(SEMIIMG) \
+	rm -f $(IMAGE) boot.o model.lds monitor.o bootlock.o cache-v7.o psci.o test_psci $(SEMIIMG) \
 	.monitor .text
 
 psci.o: psci.c Makefile
 	$(CC) $(CPPFLAGS) -O2 -Wall -marm -fPIC -c -o $@ $<
 
-$(IMAGE) .monitor: boot.o monitor.o bootlock.o psci.o model.lds Makefile
+$(IMAGE) .monitor: boot.o monitor.o cache-v7.o bootlock.o psci.o model.lds Makefile
 	$(LD) -o $@ --script=model.lds
 	./objcopy-sh
 
@@ -46,6 +46,9 @@ monitor.o: $(MONITOR)
 	$(CC) $(CPPFLAGS) -c -o $@ $<
 
 bootlock.o: bootlock.S
+	$(CC) $(CPPFLAGS) -c -o $@ $<
+
+cache-v7.o: cache-v7.S
 	$(CC) $(CPPFLAGS) -c -o $@ $<
 
 model.lds: $(LD_SCRIPT) Makefile
