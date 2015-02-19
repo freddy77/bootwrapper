@@ -36,12 +36,13 @@ int main(void)
 	printf("result: cpu_on %d\n", expect3(PSCI_RET_SUCCESS, 0x84000003, 0x101, 0x12345678));
 	printf("result: cpu_on %d\n", expect3(PSCI_RET_ALREADY_ON, 0x84000003, 0x101, 0x12345678));
 
-	printf("result: %d\n", expect1(PSCI_RET_NOT_IMPL, 0x84000009));
+	printf("result: %d\n", expect1(PSCI_RET_NOT_IMPL, 0x8400000a));
 
 	printf("result: %d\n", expect1(PSCI_RET_NOT_IMPL, 0x8400000a));
 
 	printf("crash!\n");
 	printf("result: %d\n", expect1(PSCI_RET_DENIED, 0x84000008));
+	printf("result: %d\n", expect1(PSCI_RET_DENIED, 0x84000009));
 	return 0;
 }
 

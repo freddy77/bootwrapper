@@ -239,7 +239,7 @@ error:
 }
 #endif
 
-static int hip04_system_off(void)
+static int hip04_system_reset(void)
 {
 	writel_relaxed(readl_relaxed(gpio3) & ~0x4000000, gpio3);
 #ifndef TEST
@@ -257,7 +257,12 @@ int psci(unsigned func, unsigned a1, unsigned a2, unsigned a3)
 	case PSCI_CPU_ON:
 		return hip04_cpu_up(a1, a2);
 	case PSCI_SYSTEM_OFF:
-		return hip04_system_off();
+		/*
+		 * TODO implement correctly, at least should shutdown
+		 * all CPUs. For not fall through to reset
+		 */
+	case PSCI_SYSTEM_RESET:
+		return hip04_system_reset();
 	}
 	return PSCI_RET_NOT_IMPL;
 }
