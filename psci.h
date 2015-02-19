@@ -24,5 +24,6 @@
 #define PSCI_SYSTEM_RESET         0x84000009
 
 int psci(unsigned func, unsigned a1, unsigned a2, unsigned a3);
+unsigned long long hip04_cpu_starting(void);
 void boot_lock(void);
 void boot_unlock(void);

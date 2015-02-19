@@ -30,9 +30,21 @@
 
 #define GIC_SGI_EVENT_CHECK 0
 
+enum {
+	HIP04_STATE_OFF = 0,
+	HIP04_STATE_PENDING = 1,
+	HIP04_STATE_ON = 2,
+};
+
 static char hip04_cpu_table[HIP04_MAX_CLUSTERS][HIP04_MAX_CPUS_PER_CLUSTER] = {
 	{ 0 }
 };
+
+struct hip04_start {
+	unsigned long entry, context;
+};
+
+static struct hip04_start hip04_starts[HIP04_MAX_CLUSTERS][HIP04_MAX_CPUS_PER_CLUSTER];
 
 #define fabric ((volatile unsigned char*)0xe302a000)
 #define sysctrl ((volatile unsigned char*)0xe3e00000)
@@ -81,16 +93,16 @@ static void hip04_set_snoop_filter(unsigned int cluster, unsigned int on)
     debug();
 }
 
+#ifdef TEST
+unsigned get_mpidr(void);
+#else
 static inline unsigned get_mpidr(void)
 {
-#ifdef TEST
-	return 0;
-#else
 	unsigned res;
 	__asm__("mrc	p15, 0, %0, c0, c0, 5": "=r"(res) ::);
 	return res;
-#endif
 }
+#endif
 
 static void hip04_cpu_table_init(void)
 {
@@ -109,7 +121,7 @@ static void hip04_cpu_table_init(void)
         return;
 
     hip04_set_snoop_filter(cluster, 1);
-    hip04_cpu_table[cluster][cpu] = 1;
+    hip04_cpu_table[cluster][cpu] = HIP04_STATE_ON;
 }
 
 static bool hip04_cluster_down(unsigned int cluster)
@@ -157,7 +169,8 @@ static inline unsigned get_text_start(void)
 unsigned get_text_start(void) __attribute__ ((const));
 #endif
 
-static int hip04_cpu_up(int cpu, unsigned long entry)
+/* power up a cpu */
+static int hip04_cpu_up(int cpu, unsigned long entry, unsigned long context)
 {
     unsigned int cluster;
     unsigned long data;
@@ -174,10 +187,18 @@ static int hip04_cpu_up(int cpu, unsigned long entry)
     if (cluster >= HIP04_MAX_CLUSTERS || cpu >= HIP04_MAX_CPUS_PER_CLUSTER)
         return PSCI_RET_INVALID;
 
+    boot_lock();
+
     hip04_cpu_table_init();
 
-    if (hip04_cpu_table[cluster][cpu])
+    switch (hip04_cpu_table[cluster][cpu]) {
+    case HIP04_STATE_PENDING:
+        boot_unlock();
+        return PSCI_RET_ON_PENDING;
+    case HIP04_STATE_ON:
+        boot_unlock();
         return PSCI_RET_ALREADY_ON;
+    }
 
     debug();
     writel_relaxed(get_text_start(), relocation);
@@ -187,11 +208,14 @@ static int hip04_cpu_up(int cpu, unsigned long entry)
 
     hip04_cluster_up(cluster);
 
-    hip04_cpu_table[cluster][cpu] = 1;
+    hip04_cpu_table[cluster][cpu] = HIP04_STATE_PENDING;
+    hip04_starts[cluster][cpu] = (struct hip04_start) { entry, context };
 
     data = CORE_RESET_BIT(cpu) | NEON_RESET_BIT(cpu) | \
            CORE_DEBUG_RESET_BIT(cpu);
     writel_relaxed(data, sysctrl + SC_CPU_RESET_DREQ(cluster));
+
+    boot_unlock();
 
     cpu_up_send_sgi(cpu);
     debug();
@@ -248,6 +272,8 @@ static int hip04_system_reset(void)
 static int hip04_affinity_info(unsigned long affinity, unsigned long affinity_level)
 {
 	unsigned cluster, cpu;
+	int res;
+#define RETURN(r) do { res = (r); goto out; } while(0)
 
 	if (affinity_level > 3)
 		return PSCI_RET_INVALID;
@@ -262,16 +288,49 @@ static int hip04_affinity_info(unsigned long affinity, unsigned long affinity_le
 	cluster = (affinity >> 8) & 0xff;
 	if (cluster >= HIP04_MAX_CLUSTERS)
 		return PSCI_RET_NOT_PRESENT;
+
+	boot_lock();
 	if (affinity_level == 1) {
-		return (hip04_cluster_down(cluster) ?
-			PSCI_STATE_OFF : PSCI_STATE_ON);
+		RETURN((hip04_cluster_down(cluster) ?
+			PSCI_STATE_OFF : PSCI_STATE_ON));
 	}
 	cpu = affinity_level & 0xff;
 	if (cpu >= HIP04_MAX_CPUS_PER_CLUSTER)
-		return PSCI_RET_NOT_PRESENT;
+		RETURN(PSCI_RET_NOT_PRESENT);
 
-	/* TODO handle powering on */
-	return hip04_cpu_table[cluster][cpu] ? PSCI_STATE_ON : PSCI_STATE_OFF;
+	switch (hip04_cpu_table[cluster][cpu]) {
+	case HIP04_STATE_OFF:
+		RETURN(PSCI_STATE_OFF);
+	case HIP04_STATE_PENDING:
+		RETURN(PSCI_RET_ON_PENDING);
+	}
+	res = PSCI_STATE_ON;
+
+out:
+	boot_unlock();
+	return res;
+#undef RETURN
+}
+
+unsigned long long hip04_cpu_starting(void)
+{
+	unsigned cpu, cluster;
+	unsigned long long res = 0;
+
+	cpu = get_mpidr();
+	cluster = (cpu >> 8) & 3;
+	cpu &= 3;
+
+	boot_lock();
+	if (hip04_cpu_table[cluster][cpu] == HIP04_STATE_PENDING) {
+		res = (((unsigned long long) hip04_starts[cluster][cpu].entry) << 32) |
+		      hip04_starts[cluster][cpu].context;
+		hip04_starts[cluster][cpu] = (struct hip04_start) { 0, 0 };
+		hip04_cpu_table[cluster][cpu] = HIP04_STATE_ON;
+	}
+	boot_unlock();
+
+	return res;
 }
 
 int psci(unsigned func, unsigned a1, unsigned a2, unsigned a3)
@@ -279,8 +338,10 @@ int psci(unsigned func, unsigned a1, unsigned a2, unsigned a3)
 	switch (func) {
 	case PSCI_VERSION:
 		return 2;
+	case PSCI_CPU_OFF:
+		return PSCI_RET_DENIED;
 	case PSCI_CPU_ON:
-		return hip04_cpu_up(a1, a2);
+		return hip04_cpu_up(a1, a2, a3);
 	case PSCI_AFFINITY_INFO:
 		return hip04_affinity_info(a1, a2);
 	case PSCI_SYSTEM_OFF:

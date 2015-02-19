@@ -50,15 +50,23 @@ vect_hyp:
 	b   set_hvbar
 #endif
 set_hvbar:
-	mrs	r0, spsr
-	and	r0, r0, 0x1f
-	cmp	r0, 0x13
+	@ Check if called from SVC
+	mrs	r12, spsr
+	and	r12, r12, 0x1f
+	cmp	r12, 0x13
 	bne	1f
+
+	@ SVC, copy SP and LR from SVC mode before returning
 	mrs	sp, SP_svc
 	mrs	lr, LR_svc
 	mrs	r12, cpsr
 	orr	r12, r12, #0x1c0	@ Set A, I and F.
 	msr	spsr_cxsf, r12
+
+	@ If we got the entry from PSCI use these information
+	@ r0 == context, r1 == entry
+	cmp	r1, #0
+	msrne	ELR_hyp, r1
 1:
 	eret
 
@@ -78,7 +86,7 @@ monitor_init:
 	mcr	p15, 0, r0, c12, c0, 1		@ Monitor vector base address
 	isb
 
-	push	{r11, r12}
+	push	{r2,r3,r12,lr}
 
 	@
 	@ Switch to non-secure mode
@@ -92,9 +100,14 @@ monitor_init:
     	@
 	@ Write HVBAR
 	@
-	adr	r11, vect_hyp
-	mcr	p15, 4, r11, c12, c0, 0
-	pop	{r11, r12}
+	adr	r0, vect_hyp
+	mcr	p15, 4, r0, c12, c0, 0
+
+	@ Load context and entry for this cpu
+	@ on exit r0 == context, r1 == entry
+	bl	hip04_cpu_starting
+
+	pop	{r2,r3,r12,lr}
 	movs	pc, lr
 
 	.align 5
