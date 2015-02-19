@@ -34,12 +34,6 @@ static char hip04_cpu_table[HIP04_MAX_CLUSTERS][HIP04_MAX_CPUS_PER_CLUSTER] = {
 	{ 0 }
 };
 
-#define PSCI_RET_SUCCESS        0
-#define PSCI_RET_NOT_IMPL       (-1)
-#define PSCI_RET_INVALID        (-2)
-#define PSCI_RET_DENIED         (-3)
-#define PSCI_RET_ALREADY_ON     (-4)
-
 #define fabric ((volatile unsigned char*)0xe302a000)
 #define sysctrl ((volatile unsigned char*)0xe3e00000)
 #define relocation ((volatile unsigned char*)0xe0000100)
@@ -249,6 +243,36 @@ static int hip04_system_reset(void)
 	return PSCI_RET_DENIED;
 }
 
+/* return status of cluster/cpus */
+static int hip04_affinity_info(unsigned long affinity, unsigned long affinity_level)
+{
+	unsigned cluster, cpu;
+
+	if (affinity_level > 3)
+		return PSCI_RET_INVALID;
+
+	/* at least one core is active */
+	if (affinity_level == 3 && (affinity >> 24) == 0)
+		return PSCI_STATE_ON;
+	if (affinity >> 16)
+		return PSCI_RET_NOT_PRESENT;
+	if (affinity_level == 2)
+		return PSCI_STATE_ON;
+	cluster = (affinity >> 8) & 0xff;
+	if (cluster >= HIP04_MAX_CLUSTERS)
+		return PSCI_RET_NOT_PRESENT;
+	if (affinity_level == 1) {
+		return (hip04_cluster_down(cluster) ?
+			PSCI_STATE_OFF : PSCI_STATE_ON);
+	}
+	cpu = affinity_level & 0xff;
+	if (cpu >= HIP04_MAX_CPUS_PER_CLUSTER)
+		return PSCI_RET_NOT_PRESENT;
+
+	/* TODO handle powering on */
+	return hip04_cpu_table[cluster][cpu] ? PSCI_STATE_ON : PSCI_STATE_OFF;
+}
+
 int psci(unsigned func, unsigned a1, unsigned a2, unsigned a3)
 {
 	switch (func) {
@@ -256,6 +280,8 @@ int psci(unsigned func, unsigned a1, unsigned a2, unsigned a3)
 		return 2;
 	case PSCI_CPU_ON:
 		return hip04_cpu_up(a1, a2);
+	case PSCI_AFFINITY_INFO:
+		return hip04_affinity_info(a1, a2);
 	case PSCI_SYSTEM_OFF:
 		/*
 		 * TODO implement correctly, at least should shutdown
