@@ -281,7 +281,7 @@ static int hip04_cpu_off(void)
 		"dsb	"
 		: : "r" (0x400) );
 		v7_flush_dcache_all();
-		hip04_set_snoop_filter(cluster, 0);
+//		hip04_set_snoop_filter(cluster, 0);
 	} else {
 		v7_flush_dcache_louis();
 	}
