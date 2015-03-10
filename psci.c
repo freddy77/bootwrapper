@@ -257,7 +257,7 @@ static int hip04_cpu_up(int cpu, unsigned long entry, unsigned long context)
 
 static int hip04_cpu_off(void)
 {
-	unsigned cpu, cluster;
+	unsigned cpu, cluster, dummy;
 	bool last_man = false;
 
 	cpu = get_mpidr();
@@ -271,6 +271,12 @@ static int hip04_cpu_off(void)
 	last_man = hip04_cluster_is_down(cluster);
 
 	boot_unlock();
+
+	/* disable SMP flag in ACTLR */
+	asm volatile(
+		"mrc	p15, 0, %0, c1, c0, 1\n\t"
+		"bic	%0, %0, #0x40\n\t"
+		"mcr	p15, 0, %0, c1, c0, 1": "=r"(dummy) : : );
 
 	if (last_man) {
 		/* Since it's Cortex A15, disable L2 prefetching. */
